@@ -52,10 +52,10 @@ func Test_redirect(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			http.HandlerFunc(redirect).ServeHTTP(w, req)
+			http.HandlerFunc(redirectHandler).ServeHTTP(w, req)
 
 			if status := w.Code; status != tt.expectedStatusCode {
-				t.Errorf("wrong status code: got %v want %v", status, http.StatusOK)
+				t.Errorf("wrong status code: got %v want %v", status, tt.expectedStatusCode)
 			}
 
 			// We don't check for error since we only want to test if the location header is set
