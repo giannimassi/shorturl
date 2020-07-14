@@ -4,4 +4,4 @@ Another url shortener service.
 
 ## Usage
 
-`go run main.go`
+`go run .`

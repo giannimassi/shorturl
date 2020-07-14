@@ -13,6 +13,6 @@ func main() {
 }
 
 func run() error {
-	http.ListenAndServe(":80", redirectHandler())
+	http.ListenAndServe(":80", allowGETOnly(redirectHandler()))
 	return nil
 }
