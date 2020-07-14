@@ -15,6 +15,5 @@ func main() {
 }
 
 func run() error {
-	http.ListenAndServe(":80", routes.AllowGETOnly(routes.RedirectHandler()))
-	return nil
+	return http.ListenAndServe(":80", routes.AllowGETOnly(routes.RedirectHandler()))
 }
