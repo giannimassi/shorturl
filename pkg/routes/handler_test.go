@@ -4,8 +4,25 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
+
+const redirectTo = "https://example.com/"
+
+// mockProviderl is a simple mock providing the short-url for the redirect handler
+type mockProvider struct{}
+
+func (s *mockProvider) ShortURL(key string) (*url.URL, bool) {
+	if key == "err" {
+		return nil, false
+	}
+	url, err := url.Parse(redirectTo)
+	if err != nil {
+		panic(err)
+	}
+	return url, true
+}
 
 func Test_redirect(t *testing.T) {
 	tests := []struct {
@@ -35,7 +52,7 @@ func Test_redirect(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			RedirectHandler().ServeHTTP(w, req)
+			RedirectHandler(&mockProvider{}).ServeHTTP(w, req)
 
 			if status := w.Code; status != tt.expectedStatusCode {
 				t.Errorf("wrong status code: got %v want %v", status, tt.expectedStatusCode)

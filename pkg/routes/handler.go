@@ -1,15 +1,28 @@
 package routes
 
-import "net/http"
+import (
+	"net/http"
+	"net/url"
+	"strings"
+)
 
-const redirectTo = "https://example.com/"
+// ShortURLProvider is the repository from which short url are fetched.
+type ShortURLProvider interface {
+	// ShortURL returns true if a short url is found for the provided key, false
+	ShortURL(key string) (*url.URL, bool)
+}
 
 // RedirectHandler implements a handler that redirects all urls to example.com
 // NOTE: only GET requests are supported and tested.
 // Reference: https://tools.ietf.org/html/rfc7231#section-6.4.2
-func RedirectHandler() http.HandlerFunc {
+func RedirectHandler(s ShortURLProvider) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, redirectTo, http.StatusMovedPermanently)
+		shortURL, found := s.ShortURL(strings.TrimPrefix(r.URL.Path, "/"))
+		if !found {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		http.Redirect(w, r, shortURL.String(), http.StatusMovedPermanently)
 	})
 }
 
