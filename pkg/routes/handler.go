@@ -28,10 +28,10 @@ func RedirectHandler(s ShortURLProvider) http.HandlerFunc {
 
 // Middlewares
 
-// AllowGETOnly is a middleware that responds with 405 to any method other than GET
-func AllowGETOnly(handler http.Handler) http.Handler {
+// OnlyIf is a middleware that responds with 405 to any method other than the one provided
+func OnlyIf(method string, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
+		if r.Method != method {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}

@@ -77,20 +77,30 @@ func Test_redirect(t *testing.T) {
 	}
 }
 
-func Test_allowGETOnly(t *testing.T) {
+func TestOnlyIf(t *testing.T) {
 	tests := []struct {
-		name   string
-		method string
-		url    string
+		name    string
+		method  string
+		url     string
+		usePOST bool
 
 		expectedStatusCode int
 	}{
 		{
-			name:   "ok",
+			name:   "get/ok",
 			method: "GET",
 			url:    "http://shorturl.com/fhsdbf",
 
 			expectedStatusCode: 200,
+		},
+
+		{
+			name:    "get/not-allowed",
+			method:  "GET",
+			url:     "http://shorturl.com/fhsdbf",
+			usePOST: true,
+
+			expectedStatusCode: 405,
 		},
 
 		{
@@ -150,7 +160,11 @@ func Test_allowGETOnly(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			noopHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-			handler := AllowGETOnly(noopHandler)
+			method := "GET"
+			if tt.usePOST {
+				method = "POST"
+			}
+			handler := OnlyIf(method, noopHandler)
 			handler.ServeHTTP(w, req)
 
 			if status := w.Code; status != tt.expectedStatusCode {

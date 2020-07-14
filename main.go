@@ -16,7 +16,7 @@ func main() {
 }
 
 func run() error {
-	return http.ListenAndServe(":80", routes.AllowGETOnly(routes.RedirectHandler(&acceptAll{})))
+	return http.ListenAndServe(":80", routes.OnlyIf("GET", routes.RedirectHandler(&acceptAll{})))
 }
 
 const redirectTo = "https://example.com/"
