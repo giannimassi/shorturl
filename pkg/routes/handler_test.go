@@ -1,4 +1,4 @@
-package main
+package routes
 
 import (
 	"fmt"
@@ -35,7 +35,7 @@ func Test_redirect(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			redirectHandler().ServeHTTP(w, req)
+			RedirectHandler().ServeHTTP(w, req)
 
 			if status := w.Code; status != tt.expectedStatusCode {
 				t.Errorf("wrong status code: got %v want %v", status, tt.expectedStatusCode)
@@ -133,7 +133,7 @@ func Test_allowGETOnly(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			noopHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-			handler := allowGETOnly(noopHandler)
+			handler := AllowGETOnly(noopHandler)
 			handler.ServeHTTP(w, req)
 
 			if status := w.Code; status != tt.expectedStatusCode {
