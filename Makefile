@@ -12,6 +12,11 @@ build:
 		$(GOBUILD) -o $(BINARY_NAME) -v
 test: 
 		$(GOTEST) -race -failfast -count=1 ./...
+
+lint:
+	golint -set_exit_status `go list ./...` && go vet ./...
+
+.PHONY: test lint
 clean: 
 		$(GOCLEAN)
 		rm -f $(BINARY_NAME)
