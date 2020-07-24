@@ -14,9 +14,9 @@ type ShortURLProvider interface {
 	// AddURL allows to store a key-url association
 	AddURL(key string, u url.URL)
 	// DeleteURL allows to Delete all key-url association for the specified url
-	DeleteURL(url url.URL)
+	DeleteURL(url url.URL) bool
 	// DeleteURLByKey allows to Delete a key-url association for the specified key
-	DeleteURLByKey(key string)
+	DeleteURLByKey(key string) bool
 }
 
 // Mux returns a new http handler with routes for adding urls and redirecting

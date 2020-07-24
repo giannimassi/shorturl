@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"net/url"
 	"testing"
 )
@@ -8,14 +9,16 @@ import (
 func TestMemoryStore(t *testing.T) {
 	m := NewMemoryStore()
 	assertLen := func(expected int) {
+		t.Helper()
 		if storeLen := len(m.urls); storeLen != expected {
 			t.Errorf("unexpected entries in memory store: got %d, want %d", storeLen, expected)
 		}
 	}
 	assertURLForKey := func(key, expected string) {
-		u, found := m.ShortURL(key)
-		if !found {
-			t.Errorf("url %s expected in store but not found", expected)
+		t.Helper()
+		u, err := m.ShortURL(key)
+		if err != nil {
+			t.Errorf("err while getting short url for %v (expected %s): %v", key, expected, err)
 		}
 		if u == nil {
 			t.Errorf("url %s expected in store but is nil", expected)
@@ -28,8 +31,8 @@ func TestMemoryStore(t *testing.T) {
 	}
 
 	assertLen(0)
-	u, found := m.ShortURL("")
-	if found || u != nil {
+	u, err := m.ShortURL("")
+	if !errors.Is(err, errKeyNotFound) || u != nil {
 		t.Errorf("unexpected short url in memory store: %s", u.String())
 	}
 
@@ -50,20 +53,35 @@ func TestMemoryStore(t *testing.T) {
 	m.AddURL("b", mustMkURL(url2))
 	assertLen(2)
 	assertURLForKey("a", url1)
-	assertURLForKey("b", url2)
+	assertURLForKey("b", url1)
 
 	m.AddURL("c", mustMkURL(url2))
 	assertLen(3)
 	assertURLForKey("a", url1)
-	assertURLForKey("b", url2)
+	assertURLForKey("b", url1)
 	assertURLForKey("c", url2)
 
-	m.DeleteURL(mustMkURL(url2))
-	assertLen(1)
+	if err := m.DeleteURL(mustMkURL(url2)); err != nil {
+		t.Errorf("unexpected err: %v", err)
+	}
+	assertLen(2)
 	assertURLForKey("a", url1)
+	assertURLForKey("b", url1)
 
-	m.DeleteURLByKey("a")
+	if err := m.DeleteURLByKey("a"); err != nil {
+		t.Errorf("unexpected err: %v", err)
+	}
+	assertLen(1)
+
+	if err := m.DeleteURL(mustMkURL(url1)); err != nil {
+
+	}
+
 	assertLen(0)
+
+	if err := m.DeleteURLByKey("a"); !errors.Is(err, errKeyNotFound) {
+		t.Errorf("unexpected err: %v", err)
+	}
 }
 
 func mustMkURL(str string) url.URL {
