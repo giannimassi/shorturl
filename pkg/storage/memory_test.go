@@ -32,7 +32,7 @@ func TestMemoryStore(t *testing.T) {
 
 	assertLen(0)
 	u, err := m.ShortURL("")
-	if !errors.Is(err, errKeyNotFound) || u != nil {
+	if !errors.Is(err, ErrKeyNotFound) || u != nil {
 		t.Errorf("unexpected short url in memory store: %s", u.String())
 	}
 
@@ -61,25 +61,22 @@ func TestMemoryStore(t *testing.T) {
 	assertURLForKey("b", url1)
 	assertURLForKey("c", url2)
 
-	if err := m.DeleteURL(mustMkURL(url2)); err != nil {
+	if err := m.DeleteURL("a"); err != nil {
 		t.Errorf("unexpected err: %v", err)
 	}
 	assertLen(2)
-	assertURLForKey("a", url1)
-	assertURLForKey("b", url1)
 
-	if err := m.DeleteURLByKey("a"); err != nil {
+	if err := m.DeleteURL("b"); err != nil {
 		t.Errorf("unexpected err: %v", err)
 	}
 	assertLen(1)
 
-	if err := m.DeleteURL(mustMkURL(url1)); err != nil {
-
+	if err := m.DeleteURL("c"); err != nil {
+		t.Errorf("unexpected err: %v", err)
 	}
-
 	assertLen(0)
 
-	if err := m.DeleteURLByKey("a"); !errors.Is(err, errKeyNotFound) {
+	if err := m.DeleteURL("a"); !errors.Is(err, ErrKeyNotFound) {
 		t.Errorf("unexpected err: %v", err)
 	}
 }

@@ -2,31 +2,32 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/giannimassi/shorturl/pkg/storage"
 )
 
 // ShortURLProvider is the repository from which short url are fetched.
 type ShortURLProvider interface {
 	// ShortURL returns true if a short url is found for the provided key, false otherwise
-	ShortURL(key string) (*url.URL, bool)
+	ShortURL(key string) (*url.URL, error)
 	// AddURL allows to store a key-url association
-	AddURL(key string, u url.URL)
-	// DeleteURL allows to Delete all key-url association for the specified url
-	DeleteURL(url url.URL) bool
+	AddURL(key string, u url.URL) error
 	// DeleteURLByKey allows to Delete a key-url association for the specified key
-	DeleteURLByKey(key string) bool
+	DeleteURL(key string) error
 }
 
 // Mux returns a new http handler with routes for adding urls and redirecting
 func Mux(s ShortURLProvider) http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/", onlyIf("GET", redirectHandler(s)))
-	mux.Handle("/add", onlyIf("POST", addURLHandler(s)))
-	mux.Handle("/delete", onlyIf("POST", addURLHandler(s)))
-	mux.Handle("/delete/bykey", onlyIf("POST", deleteURLByKeyHandler(s)))
-	mux.Handle("/info", onlyIf("POST", infoHandler(s)))
+	mux.Handle("/", onlyIf("GET", log(redirectHandler(s))))
+	mux.Handle("/api/add", onlyIf("POST", log(addURLHandler(s))))
+	mux.Handle("/api/delete", onlyIf("POST", log(deleteURLHandler(s))))
+	mux.Handle("/api/info", onlyIf("POST", log(infoHandler(s))))
 	return mux
 }
 
@@ -36,9 +37,12 @@ func Mux(s ShortURLProvider) http.Handler {
 func redirectHandler(s ShortURLProvider) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := keyFromRequestURLPath(r.URL.Path)
-		shortURL, found := s.ShortURL(key)
-		if !found {
+		shortURL, err := s.ShortURL(key)
+		if errors.Is(err, storage.ErrKeyNotFound) {
 			w.WriteHeader(http.StatusNotFound)
+			return
+		} else if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		http.Redirect(w, r, shortURL.String(), http.StatusMovedPermanently)
@@ -56,9 +60,12 @@ func infoHandler(s ShortURLProvider) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		shortURL, found := s.ShortURL(inputPayload.Key)
-		if !found {
+		shortURL, err := s.ShortURL(inputPayload.Key)
+		if errors.Is(err, storage.ErrKeyNotFound) {
 			w.WriteHeader(http.StatusNotFound)
+			return
+		} else if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		outputPayload := struct {
@@ -94,38 +101,23 @@ func addURLHandler(s ShortURLProvider) http.HandlerFunc {
 
 		u, err := url.Parse(payload.URL)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 
-		s.AddURL(payload.Key, *u)
+		if err := s.AddURL(payload.Key, *u); errors.Is(err, storage.ErrKeyAlreadyExists) {
+			w.WriteHeader(http.StatusConflict)
+			// TODO: return descriptive payload
+			return
+		} else if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	})
 }
 
 // deleteURLByKeyHandler returns an http.Handler that allows to delete a key-url association
 func deleteURLHandler(s ShortURLProvider) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		dec := json.NewDecoder(r.Body)
-		payload := struct {
-			URL string
-		}{}
-		if err := dec.Decode(&payload); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		u, err := url.Parse(payload.URL)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		s.DeleteURL(*u)
-	})
-}
-
-// deleteURLByKeyHandler returns an http.Handler that allows to delete a key-url association
-func deleteURLByKeyHandler(s ShortURLProvider) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dec := json.NewDecoder(r.Body)
 		payload := struct {
@@ -136,7 +128,13 @@ func deleteURLByKeyHandler(s ShortURLProvider) http.HandlerFunc {
 			return
 		}
 
-		s.DeleteURLByKey(payload.Key)
+		if err := s.DeleteURL(payload.Key); errors.Is(err, storage.ErrKeyNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		} else if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	})
 }
 
@@ -149,6 +147,13 @@ func onlyIf(method string, handler http.Handler) http.Handler {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
+		handler.ServeHTTP(w, r)
+	})
+}
+
+func log(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("%s - %s\n", r.Method, r.URL.String())
 		handler.ServeHTTP(w, r)
 	})
 }
