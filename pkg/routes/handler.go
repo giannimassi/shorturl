@@ -25,10 +25,24 @@ type ShortURLProvider interface {
 func Mux(s ShortURLProvider) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/", onlyIf("GET", log(redirectHandler(s))))
-	mux.Handle("/api/add", onlyIf("POST", log(addURLHandler(s))))
-	mux.Handle("/api/delete", onlyIf("POST", log(deleteURLHandler(s))))
-	mux.Handle("/api/info", onlyIf("POST", log(infoHandler(s))))
+	mux.Handle("/api", log(apiHandler(s)))
 	return mux
+}
+
+func apiHandler(s ShortURLProvider) http.HandlerFunc {
+	add := addURLHandler(s)
+	delete := deleteURLHandler(s)
+	info := infoHandler(s)
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			info.ServeHTTP(w, r)
+		case http.MethodPut:
+			add.ServeHTTP(w, r)
+		case http.MethodDelete:
+			delete.ServeHTTP(w, r)
+		}
+	}
 }
 
 // redirectHandler implements a handler that redirects to the url associated with the provided code
