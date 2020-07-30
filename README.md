@@ -4,7 +4,7 @@ Another url shortener service.
 
 ## Description
 
-A web server providing a url shortener service which serves redirected urls on `/` and an API for adding, deleting and getting information on short urls. The API documentation is additionaly provided via an additional endpoint
+A web server providing a url shortener service which serves redirected urls on `/` and an API for adding, deleting and getting information on short urls. The API documentation is provided via [an additional endpoint](http://localhost:8080/swagger/index.html).
 
 ## Usage
 
@@ -13,7 +13,7 @@ The project uses a _Makefile_ with the following commands:
 - `make gen`: calls go generate, building the swagger documentation with [`swag`](https://github.com/swaggo/swag)
 - `make test`: runs all tests in the source code
 - `make lint`: runs the linter on the source code
-- `make run`: runs the web server on port
+- `make run`: runs the web server on port 8080
 
 To add a new short url:
 
