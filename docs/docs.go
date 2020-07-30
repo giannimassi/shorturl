@@ -18,13 +18,169 @@ var doc = `{
     "info": {
         "description": "{{.Description}}",
         "title": "{{.Title}}",
-        "contact": {},
-        "license": {},
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "Gianni Massi",
+            "url": "http://www.shorturl.com/support",
+            "email": "support@shorturl.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
-    "paths": {}
+    "paths": {
+        "/api": {
+            "get": {
+                "description": "Returns information about the short url association stored for the provided key",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Return short URL info",
+                "parameters": [
+                    {
+                        "description": "Key for which the request is made",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes.infoRequestPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/routes.infoResponsePayload"
+                        }
+                    },
+                    "400": {
+                        "description": "Payload cannot be decoded"
+                    },
+                    "404": {
+                        "description": "Key not found"
+                    },
+                    "500": {
+                        "description": "The server has encountered an unknown error"
+                    }
+                }
+            },
+            "put": {
+                "description": "Adds a new key-url association",
+                "consumes": [
+                    "application/json"
+                ],
+                "summary": "Add short url",
+                "parameters": [
+                    {
+                        "description": "Key-url association to add",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes.addURLRequestPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Key-url association added"
+                    },
+                    "400": {
+                        "description": "Payload cannot be decoded"
+                    },
+                    "409": {
+                        "description": "A key-url association already exists for the provided key"
+                    },
+                    "422": {
+                        "description": "URL in the payload is malformed"
+                    },
+                    "500": {
+                        "description": "The server has encountered an unknown error"
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a key-url association",
+                "consumes": [
+                    "application/json"
+                ],
+                "summary": "Delete short url",
+                "parameters": [
+                    {
+                        "description": "Key-url association to delete",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routes.deleteURLRequestPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Key-url association deleted"
+                    },
+                    "400": {
+                        "description": "Payload cannot be decoded"
+                    },
+                    "404": {
+                        "description": "Key-url association not found for key"
+                    },
+                    "500": {
+                        "description": "The server has encountered an unknown error"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "routes.addURLRequestPayload": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "routes.deleteURLRequestPayload": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                }
+            }
+        },
+        "routes.infoRequestPayload": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                }
+            }
+        },
+        "routes.infoResponsePayload": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        }
+    }
 }`
 
 type swaggerInfo struct {
@@ -38,12 +194,12 @@ type swaggerInfo struct {
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = swaggerInfo{
-	Version:     "",
-	Host:        "",
-	BasePath:    "",
+	Version:     "0.1",
+	Host:        "localhost:8080",
+	BasePath:    "/api",
 	Schemes:     []string{},
-	Title:       "",
-	Description: "",
+	Title:       "Shorturl API",
+	Description: "This is an url shortening service",
 }
 
 type s struct{}

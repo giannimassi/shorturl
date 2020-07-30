@@ -145,9 +145,7 @@ func Test_infoHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := bytes.Buffer{}
 			enc := json.NewEncoder(&buf)
-			if err := enc.Encode(&struct {
-				Key string
-			}{Key: "abcdefg"}); err != nil {
+			if err := enc.Encode(&infoRequestPayload{Key: "abcdefg"}); err != nil {
 				t.Fatal(err)
 			}
 			if tt.malformedPayload {
@@ -172,10 +170,7 @@ func Test_infoHandler(t *testing.T) {
 			}
 
 			dec := json.NewDecoder(w.Body)
-			bodyPayload := struct {
-				Key string
-				URL string
-			}{}
+			var bodyPayload infoResponsePayload
 			if err := dec.Decode(&bodyPayload); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
@@ -219,9 +214,7 @@ func Test_deleteURLHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := bytes.Buffer{}
 			enc := json.NewEncoder(&buf)
-			if err := enc.Encode(&struct {
-				Key string
-			}{Key: tt.key}); err != nil {
+			if err := enc.Encode(&deleteURLRequestPayload{Key: tt.key}); err != nil {
 				t.Fatal(err)
 			}
 			if tt.malformedPayload {
@@ -294,10 +287,7 @@ func Test_addURL(t *testing.T) {
 			if tt.malformedURL {
 				url = string([]byte{0x7f})
 			}
-			if err := dec.Encode(&struct {
-				Key string
-				URL string
-			}{Key: "example", URL: url}); err != nil {
+			if err := dec.Encode(&addURLRequestPayload{Key: "example", URL: url}); err != nil {
 				t.Fatal(err)
 			}
 
@@ -321,107 +311,6 @@ func Test_addURL(t *testing.T) {
 		})
 	}
 
-}
-
-func TestOnlyIf(t *testing.T) {
-	tests := []struct {
-		name    string
-		method  string
-		url     string
-		usePOST bool
-
-		expectedStatusCode int
-	}{
-		{
-			name:   "get/ok",
-			method: "GET",
-			url:    "http://shorturl.com/fhsdbf",
-
-			expectedStatusCode: 200,
-		},
-
-		{
-			name:    "get/not-allowed",
-			method:  "GET",
-			url:     "http://shorturl.com/fhsdbf",
-			usePOST: true,
-
-			expectedStatusCode: 405,
-		},
-
-		{
-			name:   "head/not-allowed",
-			method: "HEAD",
-			url:    "http://shorturl.com/fhsdbf",
-
-			expectedStatusCode: 405,
-		},
-
-		{
-			name:   "post/not-allowed",
-			method: "POST",
-			url:    "http://shorturl.com/fhsdbf",
-
-			expectedStatusCode: 405,
-		},
-
-		{
-			name:   "put/not-allowed",
-			method: "PUT",
-			url:    "http://shorturl.com/fhsdbf",
-
-			expectedStatusCode: 405,
-		},
-
-		{
-			name:   "delete/not-allowed",
-			method: "DELETE",
-			url:    "http://shorturl.com/fhsdbf",
-
-			expectedStatusCode: 405,
-		},
-
-		{
-			name:   "connect/not-allowed",
-			method: "CONNECT",
-			url:    "http://shorturl.com/fhsdbf",
-
-			expectedStatusCode: 405,
-		},
-
-		{
-			name:   "options/not-allowed",
-			method: "OPTIONS",
-			url:    "http://shorturl.com/fhsdbf",
-
-			expectedStatusCode: 405,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequest(tt.method, tt.url, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			w := httptest.NewRecorder()
-			noopHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-			method := "GET"
-			if tt.usePOST {
-				method = "POST"
-			}
-			handler := onlyIf(method, noopHandler)
-			handler.ServeHTTP(w, req)
-
-			if status := w.Code; status != tt.expectedStatusCode {
-				t.Errorf("wrong status code: got %v want %v", status, tt.expectedStatusCode)
-			}
-
-			if w.Body.String() != "" {
-				t.Errorf("unexpected body: %v", w.Body.String())
-			}
-		})
-	}
 }
 
 func mustMkURL(str string) url.URL {

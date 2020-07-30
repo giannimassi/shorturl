@@ -1,5 +1,111 @@
+basePath: /api
+definitions:
+  routes.addURLRequestPayload:
+    properties:
+      key:
+        type: string
+      url:
+        type: string
+    type: object
+  routes.deleteURLRequestPayload:
+    properties:
+      key:
+        type: string
+    type: object
+  routes.infoRequestPayload:
+    properties:
+      key:
+        type: string
+    type: object
+  routes.infoResponsePayload:
+    properties:
+      key:
+        type: string
+      url:
+        type: string
+    type: object
+host: localhost:8080
 info:
-  contact: {}
-  license: {}
-paths: {}
+  contact:
+    email: support@shorturl.com
+    name: Gianni Massi
+    url: http://www.shorturl.com/support
+  description: This is an url shortening service
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Shorturl API
+  version: "0.1"
+paths:
+  /api:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a key-url association
+      parameters:
+      - description: Key-url association to delete
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/routes.deleteURLRequestPayload'
+      responses:
+        "200":
+          description: Key-url association deleted
+        "400":
+          description: Payload cannot be decoded
+        "404":
+          description: Key-url association not found for key
+        "500":
+          description: The server has encountered an unknown error
+      summary: Delete short url
+    get:
+      consumes:
+      - application/json
+      description: Returns information about the short url association stored for the provided key
+      parameters:
+      - description: Key for which the request is made
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/routes.infoRequestPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/routes.infoResponsePayload'
+        "400":
+          description: Payload cannot be decoded
+        "404":
+          description: Key not found
+        "500":
+          description: The server has encountered an unknown error
+      summary: Return short URL info
+    put:
+      consumes:
+      - application/json
+      description: Adds a new key-url association
+      parameters:
+      - description: Key-url association to add
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/routes.addURLRequestPayload'
+      responses:
+        "200":
+          description: Key-url association added
+        "400":
+          description: Payload cannot be decoded
+        "409":
+          description: A key-url association already exists for the provided key
+        "422":
+          description: URL in the payload is malformed
+        "500":
+          description: The server has encountered an unknown error
+      summary: Add short url
 swagger: "2.0"

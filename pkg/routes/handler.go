@@ -3,13 +3,17 @@ package routes
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/giannimassi/shorturl/pkg/storage"
+	"github.com/gin-gonic/gin"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
 )
+
+//go:generate swag init -g ./handler.go -o ../../docs
 
 // ShortURLProvider is the repository from which short url are fetched.
 type ShortURLProvider interface {
@@ -21,28 +25,35 @@ type ShortURLProvider interface {
 	DeleteURL(key string) error
 }
 
-// Mux returns a new http handler with routes for adding urls and redirecting
-func Mux(s ShortURLProvider) http.Handler {
-	mux := http.NewServeMux()
-	mux.Handle("/", onlyIf("GET", log(redirectHandler(s))))
-	mux.Handle("/api", log(apiHandler(s)))
-	return mux
-}
+// @title Shorturl API
+// @version 0.1
+// @description This is an url shortening service
+// @termsOfService http://swagger.io/terms/
 
-func apiHandler(s ShortURLProvider) http.HandlerFunc {
-	add := addURLHandler(s)
-	delete := deleteURLHandler(s)
-	info := infoHandler(s)
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			info.ServeHTTP(w, r)
-		case http.MethodPut:
-			add.ServeHTTP(w, r)
-		case http.MethodDelete:
-			delete.ServeHTTP(w, r)
-		}
-	}
+// @contact.name Gianni Massi
+// @contact.url http://www.shorturl.com/support
+// @contact.email support@shorturl.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api
+
+// Start runs the server, setting up all required routes
+func Start(s ShortURLProvider) error {
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+
+	r.NoRoute(gin.WrapF(redirectHandler(s)))
+
+	api := r.Group("/api")
+	api.GET("", gin.WrapF(infoHandler(s)))
+	api.PUT("", gin.WrapF(addURLHandler(s)))
+	api.DELETE("", gin.WrapF(deleteURLHandler(s)))
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	return r.Run(":8080")
 }
 
 // redirectHandler implements a handler that redirects to the url associated with the provided code
@@ -63,17 +74,38 @@ func redirectHandler(s ShortURLProvider) http.HandlerFunc {
 	})
 }
 
+// infoRequestPayload godoc
+type infoRequestPayload struct {
+	Key string
+}
+
+// infoResponsePayload godoc
+type infoResponsePayload struct {
+	Key string
+	URL string
+}
+
 // infoHandler implements a handler that returns information about the key-url association
+// @Summary Return short URL info
+// @Description Returns information about the short url association stored for the provided key
+// @Accept  json
+// @Produce  json
+// @Param payload body infoRequestPayload true "Key for which the request is made"
+// @Success 200 {object} infoResponsePayload
+// @Failure 400 "Payload cannot be decoded"
+// @Failure 404 "Key not found"
+// @Failure 500 "The server has encountered an unknown error"
+// @Router /api [get]
 func infoHandler(s ShortURLProvider) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dec := json.NewDecoder(r.Body)
-		inputPayload := struct {
-			Key string
-		}{}
+		var inputPayload infoRequestPayload
 		if err := dec.Decode(&inputPayload); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		w.Header().Add("Content-Type", "application/json")
+
 		shortURL, err := s.ShortURL(inputPayload.Key)
 		if errors.Is(err, storage.ErrKeyNotFound) {
 			w.WriteHeader(http.StatusNotFound)
@@ -82,10 +114,7 @@ func infoHandler(s ShortURLProvider) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		outputPayload := struct {
-			Key string
-			URL string
-		}{
+		outputPayload := infoResponsePayload{
 			Key: inputPayload.Key,
 			URL: shortURL.String(),
 		}
@@ -100,14 +129,27 @@ func keyFromRequestURLPath(path string) string {
 	return strings.TrimPrefix(path, "/")
 }
 
+// addURLRequestPayload godoc
+type addURLRequestPayload struct {
+	Key string
+	URL string
+}
+
 // addURLHandler returns an http.Handler that allows to add a key-url association
+// @Summary Add short url
+// @Description Adds a new key-url association
+// @Accept json
+// @Param payload body addURLRequestPayload true "Key-url association to add"
+// @Success 200 "Key-url association added"
+// @Failure 400 "Payload cannot be decoded"
+// @Failure 422 "URL in the payload is malformed"
+// @Failure 409 "A key-url association already exists for the provided key"
+// @Failure 500 "The server has encountered an unknown error"
+// @Router /api [put]
 func addURLHandler(s ShortURLProvider) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dec := json.NewDecoder(r.Body)
-		payload := struct {
-			Key string
-			URL string
-		}{}
+		var payload addURLRequestPayload
 		if err := dec.Decode(&payload); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -130,13 +172,25 @@ func addURLHandler(s ShortURLProvider) http.HandlerFunc {
 	})
 }
 
+// deleteURLRequestPayload godoc
+type deleteURLRequestPayload struct {
+	Key string
+}
+
 // deleteURLByKeyHandler returns an http.Handler that allows to delete a key-url association
+// @Summary Delete short url
+// @Description Deletes a key-url association
+// @Accept json
+// @Param payload body deleteURLRequestPayload true "Key-url association to delete"
+// @Success 200 "Key-url association deleted"
+// @Failure 400 "Payload cannot be decoded"
+// @Failure 404 "Key-url association not found for key"
+// @Failure 500 "The server has encountered an unknown error"
+// @Router /api [delete]
 func deleteURLHandler(s ShortURLProvider) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dec := json.NewDecoder(r.Body)
-		payload := struct {
-			Key string
-		}{}
+		var payload deleteURLRequestPayload
 		if err := dec.Decode(&payload); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -149,25 +203,5 @@ func deleteURLHandler(s ShortURLProvider) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-	})
-}
-
-// Middlewares
-
-// onlyIf is a middleware that responds with 405 to any method other than the one provided
-func onlyIf(method string, handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != method {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		handler.ServeHTTP(w, r)
-	})
-}
-
-func log(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("%s - %s\n", r.Method, r.URL.String())
-		handler.ServeHTTP(w, r)
 	})
 }

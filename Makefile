@@ -4,6 +4,7 @@ GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GORUN=$(GOCMD) run
+GOGEN=$(GOCMD) generate
 BINARY_NAME=shorturl
 BINARY_UNIX=$(BINARY_NAME)_unix
 
@@ -23,3 +24,5 @@ clean:
 		rm -f $(BINARY_UNIX)
 run:
 		$(GORUN) .
+gen:
+		$(GOGEN) ./...

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"net/http"
 	"os"
 
+	_ "github.com/giannimassi/shorturl/docs"
 	"github.com/giannimassi/shorturl/pkg/routes"
 	"github.com/giannimassi/shorturl/pkg/storage"
 )
@@ -16,5 +16,5 @@ func main() {
 }
 
 func run() error {
-	return http.ListenAndServe(":80", routes.Mux(storage.NewMemoryStore()))
+	return routes.Start(storage.NewMemoryStore())
 }
