@@ -23,6 +23,8 @@ type ShortURLProvider interface {
 	AddURL(key string, u url.URL) error
 	// DeleteURLByKey allows to Delete a key-url association for the specified key
 	DeleteURL(key string) error
+	// ShortURLInfo returns true and the number of hits if a short url is found for the provided key, false otherwise
+	ShortURLInfo(key string) (*url.URL, int, error)
 }
 
 // @title Shorturl API
@@ -76,13 +78,14 @@ func redirectHandler(s ShortURLProvider) http.HandlerFunc {
 
 // infoRequestPayload godoc
 type infoRequestPayload struct {
-	Key string
+	Key string // Key for which information is requested
 }
 
 // infoResponsePayload godoc
 type infoResponsePayload struct {
-	Key string
-	URL string
+	Key  string // Key for which information was requested
+	URL  string // URL to redirect to
+	Hits int    // Number of times the url has been requested
 }
 
 // infoHandler implements a handler that returns information about the key-url association
@@ -106,7 +109,7 @@ func infoHandler(s ShortURLProvider) http.HandlerFunc {
 		}
 		w.Header().Add("Content-Type", "application/json")
 
-		shortURL, err := s.ShortURL(inputPayload.Key)
+		shortURL, hits, err := s.ShortURLInfo(inputPayload.Key)
 		if errors.Is(err, storage.ErrKeyNotFound) {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -115,8 +118,9 @@ func infoHandler(s ShortURLProvider) http.HandlerFunc {
 			return
 		}
 		outputPayload := infoResponsePayload{
-			Key: inputPayload.Key,
-			URL: shortURL.String(),
+			Key:  inputPayload.Key,
+			URL:  shortURL.String(),
+			Hits: hits,
 		}
 		if err := json.NewEncoder(w).Encode(&outputPayload); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -131,8 +135,8 @@ func keyFromRequestURLPath(path string) string {
 
 // addURLRequestPayload godoc
 type addURLRequestPayload struct {
-	Key string
-	URL string
+	Key string // Key for which the association should be added
+	URL string // URL to add for the key
 }
 
 // addURLHandler returns an http.Handler that allows to add a key-url association
@@ -174,7 +178,7 @@ func addURLHandler(s ShortURLProvider) http.HandlerFunc {
 
 // deleteURLRequestPayload godoc
 type deleteURLRequestPayload struct {
-	Key string
+	Key string // Key for which the association should be deleted
 }
 
 // deleteURLByKeyHandler returns an http.Handler that allows to delete a key-url association

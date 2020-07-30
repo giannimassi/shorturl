@@ -146,9 +146,11 @@ var doc = `{
             "type": "object",
             "properties": {
                 "key": {
+                    "description": "Key for which the association should be added",
                     "type": "string"
                 },
                 "url": {
+                    "description": "URL to add for the key",
                     "type": "string"
                 }
             }
@@ -157,6 +159,7 @@ var doc = `{
             "type": "object",
             "properties": {
                 "key": {
+                    "description": "Key for which the association should be deleted",
                     "type": "string"
                 }
             }
@@ -165,6 +168,7 @@ var doc = `{
             "type": "object",
             "properties": {
                 "key": {
+                    "description": "Key for which information is requested",
                     "type": "string"
                 }
             }
@@ -172,10 +176,16 @@ var doc = `{
         "routes.infoResponsePayload": {
             "type": "object",
             "properties": {
+                "hits": {
+                    "description": "Number of times the url has been requested",
+                    "type": "integer"
+                },
                 "key": {
+                    "description": "Key for which information was requested",
                     "type": "string"
                 },
                 "url": {
+                    "description": "URL to redirect to",
                     "type": "string"
                 }
             }

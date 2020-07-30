@@ -17,14 +17,16 @@ const redirectTo = "https://example.com/"
 
 // mockProviderl is a simple mock providing the short-url for the redirect handler
 type mockProvider struct {
-	url url.URL
-	err error
+	url  url.URL
+	hits int
+	err  error
 }
 
-func newMockProvider(url string, err error) *mockProvider {
+func newMockProvider(url string, hits int, err error) *mockProvider {
 	return &mockProvider{
-		url: mustMkURL(url),
-		err: err,
+		url:  mustMkURL(url),
+		hits: hits,
+		err:  err,
 	}
 }
 
@@ -41,6 +43,13 @@ func (s *mockProvider) AddURL(key string, u url.URL) error {
 
 func (s *mockProvider) DeleteURL(key string) error {
 	return s.err
+}
+
+func (s *mockProvider) ShortURLInfo(key string) (*url.URL, int, error) {
+	if s.err != nil {
+		return nil, 0, s.err
+	}
+	return &s.url, s.hits, nil
 }
 
 func Test_redirectHandler(t *testing.T) {
@@ -78,7 +87,7 @@ func Test_redirectHandler(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			provider := newMockProvider(tt.redirectURL, tt.storageErr)
+			provider := newMockProvider(tt.redirectURL, 0, tt.storageErr)
 			redirectHandler(provider).ServeHTTP(w, req)
 
 			if status := w.Code; status != tt.expectedStatusCode {
@@ -112,6 +121,7 @@ func Test_infoHandler(t *testing.T) {
 	tests := []struct {
 		name             string
 		redirectURL      string
+		hits             int
 		storageErr       error
 		malformedPayload bool
 
@@ -159,7 +169,7 @@ func Test_infoHandler(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			provider := newMockProvider(tt.redirectURL, tt.storageErr)
+			provider := newMockProvider(tt.redirectURL, tt.hits, tt.storageErr)
 			infoHandler(provider).ServeHTTP(w, req)
 
 			if status := w.Code; status != tt.expectedStatusCode {
@@ -177,6 +187,10 @@ func Test_infoHandler(t *testing.T) {
 			}
 			if bodyPayload.URL != tt.redirectURL {
 				t.Errorf("unexpected url in body: got %v want %v", bodyPayload.URL, tt.redirectURL)
+			}
+
+			if bodyPayload.Hits != tt.hits {
+				t.Errorf("unexpected hits in body: got %v want %v", bodyPayload.Hits, tt.hits)
 			}
 		})
 	}
@@ -228,7 +242,7 @@ func Test_deleteURLHandler(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			provider := newMockProvider("", tt.storageErr)
+			provider := newMockProvider("", 0, tt.storageErr)
 			deleteURLHandler(provider).ServeHTTP(w, req)
 
 			if status := w.Code; status != tt.expectedStatusCode {
@@ -302,7 +316,7 @@ func Test_addURL(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			provider := newMockProvider("", tt.storageErr)
+			provider := newMockProvider("", 0, tt.storageErr)
 			addURLHandler(provider).ServeHTTP(w, req)
 
 			if status := w.Code; status != tt.expectedStatusCode {
